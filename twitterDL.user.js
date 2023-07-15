@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter DL - Click "Always Allow"!
-// @version      1.0
+// @version      1.0.1
 // @description  Download twitter videos directly from your browser! (CLICK "ALWAYS ALLOW" WHEN PROMPTED!)
 // @author       realcoloride
 // @license      MIT
@@ -67,11 +67,23 @@
     }
     function getTopBar(tweetElement, isRetweet) {
         // I know its kind of bad but it works
-        let element = isRetweet ? getRetweetFrame(tweetElement) : tweetElement;
+
+        let element = tweetElement;
+
+        if (isRetweet) {
+            const retweetFrame = getRetweetFrame(tweetElement);
+            const videoPlayer = tweetElement.querySelector('[data-testid="videoPlayer"]');
+            const videoPlayerOnRetweet = retweetFrame.querySelector('[data-testid="videoPlayer"]')
+
+            const isVideoOnRetweet = (videoPlayer == videoPlayerOnRetweet);
+            
+            if (videoPlayerOnRetweet && isVideoOnRetweet) element = retweetFrame;
+            else if (videoPlayerOnRetweet == null) element = tweetElement;
+        }
 
         const userName = element.querySelector('[data-testid="User-Name"]');
         
-        if (isRetweet) return userName.parentNode.parentNode;
+        if (isRetweet && element != tweetElement) return userName.parentNode.parentNode;
         return userName.parentNode.parentNode.parentNode;
     }
 
@@ -239,13 +251,18 @@
             if (video["lq"])  lowQualityButton = createDownloadButton(tweetId, "lq", isRetweet);
             if (video["hq"]) highQualityButton = createDownloadButton(tweetId, "hq", isRetweet);
             
+            const videoPlayer = isRetweet ? tweetElement.querySelector('[data-testid="videoPlayer"]') : null;
+            const videoPlayerOnRetweet = isRetweet ? retweetFrame.querySelector('[data-testid="videoPlayer"]') : null;
+
             const topBar = getTopBar(tweetElement, isRetweet);
             const threeDotsElement = topBar.lastChild
+
+            const isVideoOnRetweet = (videoPlayer == videoPlayerOnRetweet);
     
             if (!lowQualityButton && !highQualityButton) return;
 
             // Order: HQ then LQ
-            if (isRetweet) {
+            if (videoPlayer != null && isRetweet && isVideoOnRetweet) {
                 // Add a little side dot
                 addSideTextToRetweet(tweetElement, " · ", 6, 5);
 
