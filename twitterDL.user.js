@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         Twitter DL - Click "Always Allow"!
-// @version      1.0.1
-// @description  Download twitter videos directly from your browser! (CLICK "ALWAYS ALLOW" WHEN PROMPTED!)
+// @version      1.0.3
+// @description  Download twitter videos directly from your browser! (CLICK "ALWAYS ALLOW" IF PROMPTED!)
 // @author       realcoloride
 // @license      MIT
 // @namespace    https://twitter.com/*
 // @match        https://twitter.com/*
+// @connect      twitterpicker.com
+// @connect      twimg.com
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
 // @grant        GM.xmlHttpRequest
 // ==/UserScript==
