@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter DL - Click "Always Allow"!
-// @version      1.0.3
+// @version      1.0.6
 // @description  Download twitter videos directly from your browser! (CLICK "ALWAYS ALLOW" IF PROMPTED!)
 // @author       realcoloride
 // @license      MIT
@@ -146,9 +146,12 @@
                         }
                     }
 
+                    const meta = result.meta;
+
                     let mediaInformation = {
                         "hq" : highQualityVideo,
-                        "lq" : lowQualityVideo
+                        "lq" : lowQualityVideo,
+                        "metadata" : meta
                     }
                     foundMedias.push(mediaInformation);
                 }
@@ -159,13 +162,7 @@
     }
 
     // Downloading
-    function getFileNameFromUrl(url) {
-        const path = url.split('/'); // Split the URL by '/'
-        const lastSegment = path[path.length - 1]; // Get the last segment of the URL
-        const fileName = lastSegment.split('?')[0]; // Remove any query parameters
-        return fileName;
-    }
-    async function downloadFile(button, url, mode) {
+    async function downloadFile(button, url, mode, filename) {
         const baseText = `${downloadText} (${mode.toUpperCase()})`;
         
         button.disabled = true;
@@ -189,7 +186,7 @@
                 const link = document.createElement('a');
 
                 link.href = URL.createObjectURL(blob);
-                link.setAttribute('download', getFileNameFromUrl(url));
+                link.setAttribute('download', filename);
                 link.click();
 
                 URL.revokeObjectURL(link.href);
@@ -213,7 +210,7 @@
             }
         });
     }
-    function createDownloadButton(tweetId, tag, isRetweet) {
+    function createDownloadButton(tweetId, tag) {
         const button = document.createElement("button");
         button.hidden = true;
 
@@ -222,13 +219,16 @@
             if (!video) return;
             
             const url = video[tag];
+            const metadata = video.metadata;
+            const username = metadata.username;
+            const filename = `TwitterDL_${username}_${tweetId}`;
 
             button.classList.add("dl-video", `dl-${tag}`);
             button.innerText = `${downloadText} (${tag.toUpperCase()})`;
             button.setAttribute("href", url);
             button.setAttribute("download", "");
             button.addEventListener('click', async() => {
-                await downloadFile(button, url, tag);
+                await downloadFile(button, url, tag, filename);
             });
 
             button.hidden = false;
@@ -250,8 +250,8 @@
 
             let lowQualityButton;
             let highQualityButton;
-            if (video["lq"])  lowQualityButton = createDownloadButton(tweetId, "lq", isRetweet);
-            if (video["hq"]) highQualityButton = createDownloadButton(tweetId, "hq", isRetweet);
+            if (video["lq"])  lowQualityButton = createDownloadButton(tweetId, "lq");
+            if (video["hq"]) highQualityButton = createDownloadButton(tweetId, "hq");
             
             const videoPlayer = isRetweet ? tweetElement.querySelector('[data-testid="videoPlayer"]') : null;
             const videoPlayerOnRetweet = isRetweet ? retweetFrame.querySelector('[data-testid="videoPlayer"]') : null;
