@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Twitter DL - Click "Always Allow"!
-// @version      1.0.6
+// @version      1.0.7
 // @description  Download twitter videos directly from your browser! (CLICK "ALWAYS ALLOW" IF PROMPTED!)
 // @author       realcoloride
 // @license      MIT
 // @namespace    https://twitter.com/*
 // @match        https://twitter.com/*
-// @connect      twitterpicker.com
+// @connect      twitter-video-download.com
 // @connect      twimg.com
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
 // @grant        GM.xmlHttpRequest
@@ -15,7 +15,7 @@
 (function() {
     let injectedTweets = [];
     const checkFrequency = 150; // in milliseconds
-    const apiEndpoint = "https://api.twitterpicker.com/tweet/mediav2?id=";
+    const apiEndpoint = "https://twitter-video-download.com/fr/tweet/";
     const downloadText = "Download"
 
     const style = 
@@ -42,8 +42,12 @@
     }
     .dl-lq {
         background-color: rgba(185, 228, 138, 0.46);
-    }`;
-
+    }
+    .dl-gif {
+        background-color: rgba(219, 117, 22, 0.46);
+    }
+    `;
+    
     // Styles
     function injectStyles() {
         const styleElement = document.createElement("style");
@@ -91,74 +95,79 @@
 
     // Fetching
     async function getMediasFromTweetId(id) {
-        const url = `${apiEndpoint}${id}`;
-
-        const request = await GM.xmlHttpRequest({
-            method: "GET",
-            url: url
-        });
-        const result  = JSON.parse(request.responseText);
+        const payload = {
+            "url": `${apiEndpoint}${id}`,
+            "headers": {
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "accept-language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+                "cache-control": "max-age=0",
+                "sec-ch-ua": "\"Not/A)Brand\";v=\"99\", \"Google Chrome\";v=\"115\", \"Chromium\";v=\"115\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Windows\"",
+                "sec-fetch-dest": "document",
+                "sec-fetch-mode": "navigate",
+                "sec-fetch-site": "same-origin",
+                "sec-fetch-user": "?1",
+                "upgrade-insecure-requests": "1"
+              },
+            "referrer": "https://twitter-video-download.com/fr",
+            "referrerPolicy": "strict-origin-when-cross-origin",
+            "body": null,
+            "method": "GET",
+            "mode": "cors",
+            "credentials": "omit"
+        };
+        const request = await GM.xmlHttpRequest(payload);    
         
-        let foundMedias = [];
-        const medias = result.media;
+        let lq = null;
+        let hq = null;
 
-        if (medias) {
-            const videos = medias.videos;
+        try {
+            const regex = /https:\/\/[a-zA-Z0-9_-]+\.twimg\.com\/[a-zA-Z0-9_\-./]+\.mp4/g;
+            const text = request.responseText;
+            const links = text.match(regex);
+        
+            // Calculate the size of a video based on resolution
+            function calculateSize(resolution) {
+                const parts = resolution.split("x");
+                const width = parseInt(parts[0]);
+                const height = parseInt(parts[1]);
+                return width * height;
+            }
+            
+            // Map links to objects with resolution and size
+            const linkObjects = links.map(link => {
+                const resolutionMatch = link.match(/\/(\d+x\d+)\//);
+                const resolution = resolutionMatch ? resolutionMatch[1] : "";
+                const size = calculateSize(resolution);
+                return { link, resolution, size };
+            });
+            
+            // Sort linkObjects based on size in descending order
+            linkObjects.sort((a, b) => a.size - b.size);
+            
+            // Create a Set to track seen links and store unique links
+            const uniqueLinks = new Set();
+            const deduplicatedLinks = [];
 
-            if (videos.length > 0) {
-                for (let i = 0; i < videos.length; i++) {
-                    const video = videos[i];
-                    const variants = video.variants;
-                    if (!variants || variants.length == 0) continue;
-
-                    // Check variant medias
-                    let videoContestants = {};
-
-                    variants.forEach((variant) => {
-                        const isVideo = (variant.content_type.startsWith("video"));
-
-                        if (isVideo) {
-                            const bitrate = variant.bitrate;
-                            const url = variant.url;
-                            videoContestants[url] = bitrate;
-                        };
-                    })
-
-                    // Sort by lowest to highest bitrate
-                    const sortedContestants = Object.values(videoContestants).sort((a, b) => a - b);
-                    const findContestant = (value) => {
-                        const entry = Object.entries(videoContestants).find(([key, val]) => val === value);
-                        return entry ? entry[0] : null;
-                    };                  
-
-                    let lowQualityVideo = null;
-                    let highQualityVideo = null;
-
-                    for (let k = 0; k < sortedContestants.length; k++) {
-                        const bitrate = sortedContestants[k];
-                        const url = findContestant(bitrate);
-
-                        if (url) {
-                            lowQualityVideo = findContestant(sortedContestants[0]);
-
-                            if (sortedContestants.length > 1) // If has atleast 2 entries
-                                highQualityVideo = findContestant(sortedContestants[sortedContestants.length - 1]);
-                        }
-                    }
-
-                    const meta = result.meta;
-
-                    let mediaInformation = {
-                        "hq" : highQualityVideo,
-                        "lq" : lowQualityVideo,
-                        "metadata" : meta
-                    }
-                    foundMedias.push(mediaInformation);
+            for (const obj of linkObjects) {
+                if (!uniqueLinks.has(obj.link)) {
+                    uniqueLinks.add(obj.link);
+                    deduplicatedLinks.push(obj.link);
                 }
             }
+
+            lq = deduplicatedLinks[0];
+            
+            if (deduplicatedLinks.length > 1) hq = deduplicatedLinks[deduplicatedLinks.length-1];
+            // first quality is VERY bad so if can swap to second (medium) then its better
+            if (deduplicatedLinks.length > 2) lq = deduplicatedLinks[1]; 
+        } catch (error) {
+            console.error(error);
+            return null;
         }
 
-        return foundMedias;
+        return {lq, hq};
     }
 
     // Downloading
@@ -210,29 +219,22 @@
             }
         });
     }
-    function createDownloadButton(tweetId, tag) {
+    function createDownloadButton(tweetInformation, url, tag) {
         const button = document.createElement("button");
         button.hidden = true;
 
-        getMediasFromTweetId(tweetId).then((mediaInformation) => {
-            const video = mediaInformation[0];
-            if (!video) return;
-            
-            const url = video[tag];
-            const metadata = video.metadata;
-            const username = metadata.username;
-            const filename = `TwitterDL_${username}_${tweetId}`;
+        const username = tweetInformation.username;
+        const filename = `TwitterDL_${username}_${tweetInformation.id}`;
 
-            button.classList.add("dl-video", `dl-${tag}`);
-            button.innerText = `${downloadText} (${tag.toUpperCase()})`;
-            button.setAttribute("href", url);
-            button.setAttribute("download", "");
-            button.addEventListener('click', async() => {
-                await downloadFile(button, url, tag, filename);
-            });
-
-            button.hidden = false;
+        button.classList.add("dl-video", `dl-${tag}`);
+        button.innerText = `${downloadText} (${tag.toUpperCase()})`;
+        button.setAttribute("href", url);
+        button.setAttribute("download", "");
+        button.addEventListener('click', async() => {
+            await downloadFile(button, url, tag, filename);
         });
+
+        button.hidden = false;
 
         return button;
     }
@@ -240,18 +242,20 @@
         const tweetInformation = getTweetInformation(tweetElement);
         if (!tweetInformation) return;
         
-        const tweetId = tweetInformation.id;
-        getMediasFromTweetId(tweetId).then((mediaInformation) => {
-            const video = mediaInformation[0];
-            if (!video) return;
+        getMediasFromTweetId(tweetInformation.id).then((medias) => {
+            if (!medias) return;
 
             const retweetFrame = getRetweetFrame(tweetElement);
             const isRetweet = (retweetFrame != null);
 
             let lowQualityButton;
             let highQualityButton;
-            if (video["lq"])  lowQualityButton = createDownloadButton(tweetId, "lq");
-            if (video["hq"]) highQualityButton = createDownloadButton(tweetId, "hq");
+
+            const lq = medias.lq;
+            const hq = medias.hq;
+
+            if (lq) lowQualityButton  = createDownloadButton(tweetInformation, lq, tweetInformation.isGif ? "gif" : "lq");
+            if (hq) highQualityButton = createDownloadButton(tweetInformation, hq, tweetInformation.isGif ? "gif" : "hq");
             
             const videoPlayer = isRetweet ? tweetElement.querySelector('[data-testid="videoPlayer"]') : null;
             const videoPlayerOnRetweet = isRetweet ? retweetFrame.querySelector('[data-testid="videoPlayer"]') : null;
@@ -316,6 +320,9 @@
         // Check the tweet timestamp, it has a link with the id at the end
         // In case something goes wrong, a fallback text is shown
         let id = null;
+        let username = null;
+        let tweetUrl = null;
+        let isGif = false;
 
         const retweetFrame = getRetweetFrame(tweetElement);
         const isRetweet = (retweetFrame != null);
@@ -324,16 +331,28 @@
 
         const isPost = (isStatusUrl(window.location.href));
 
+        const regex = /^https:\/\/twitter\.com\/([^\/]+)\/status\/(\d+)/;
+        function setInfo(url) {
+            const match = url.match(regex);
+            
+            id = match[2];
+            username = match[1];
+            tweetUrl = url;
+        }
+
         try {
             if (isRetweet && isPost) {
                 const hasRetweetVideoPlayer = (videoPlayer != null);
-                if (hasRetweetVideoPlayer)
-                    id = (window.location.href).split("/").pop();
+                if (hasRetweetVideoPlayer) {
+                    const url = window.location.href;
+
+                    setInfo(url);
+                }
             } else {
                 const timeElement = tweetElement.querySelector("time");
                 const timeHref = timeElement.parentNode;
                 const tweetUrl = timeHref.href;
-                id = tweetUrl.split("/").pop();
+                setInfo(tweetUrl);
             }
         } catch (error) {
             try {
@@ -349,12 +368,19 @@
             } catch (error) {}
         }
 
-        if (!id) return;
-        information.id = id;
-
         // VideoPlayer element
         const videoPlayerElement = tweetElement.querySelector('[data-testid="videoPlayer"]');
+        const spanElement = videoPlayerElement.querySelector('div[dir="ltr"] > span');
+
+        if (spanElement)
+            isGif = spanElement.innerText == "GIF";
+        
+        if (!id) return;
+        information.id = id;
+        information.username = username;
+        information.url = tweetUrl;
         information.videoPlayer = videoPlayerElement;
+        information.isGif = isGif;
 
         // Play button
         return information;
@@ -390,9 +416,9 @@
         return statusUrlRegex.test(url);
     }
     function isValidUrl(url) {
-        const tweetUrlRegex = /^https?:\/\/twitter\.com\/\w+(\/\w+)*$/        ;
+        const tweetUrlRegex = /^https?:\/\/twitter\.com\/\w+(\/\w+)*$/;
         return tweetUrlRegex.test(url) || isStatusUrl(window.location.href);
-    }      
+    }
     if (isValidUrl(window.location.href)) {
         console.log("[TwitterDL] by (real)coloride - 2023 // Loading... ");
 
