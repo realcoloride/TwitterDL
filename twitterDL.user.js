@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter DL - Click "Always Allow"!
-// @version      1.0.8
+// @version      1.1
 // @description  Download twitter videos directly from your browser! (CLICK "ALWAYS ALLOW" IF PROMPTED!)
 // @author       realcoloride
 // @license      MIT
@@ -94,7 +94,9 @@
     }
 
     // Fetching
-    async function getMediasFromTweetId(id) {
+    async function getMediasFromTweetId(tweetInformation) {
+        const id = tweetInformation.id;
+
         const payload = {
             "url": `${apiEndpoint}${id}`,
             "headers": {
@@ -159,11 +161,17 @@
                 }
             }
 
-            lq = deduplicatedLinks[0];
+            if (tweetInformation.isGif && tweetInformation.tabIndex == "-1" ||
+                links[0].startsWith('https://video.twimg.com/tweet_video/')
+            ) {
+                lq = links[0];
+            } else {
+                lq = deduplicatedLinks[0];
             
-            if (deduplicatedLinks.length > 1) hq = deduplicatedLinks[deduplicatedLinks.length-1];
-            // first quality is VERY bad so if can swap to second (medium) then its better
-            if (deduplicatedLinks.length > 2) lq = deduplicatedLinks[1]; 
+                if (deduplicatedLinks.length > 1) hq = deduplicatedLinks[deduplicatedLinks.length-1];
+                // first quality is VERY bad so if can swap to second (medium) then its better
+                if (deduplicatedLinks.length > 2) lq = deduplicatedLinks[1]; 
+            }
         } catch (error) {
             console.error(error);
             return null;
@@ -244,7 +252,7 @@
         const tweetInformation = getTweetInformation(tweetElement);
         if (!tweetInformation) return;
         
-        getMediasFromTweetId(tweetInformation.id).then((medias) => {
+        getMediasFromTweetId(tweetInformation).then((medias) => {
             if (!medias) return;
 
             const retweetFrame = getRetweetFrame(tweetElement);
@@ -257,7 +265,7 @@
             const hq = medias.hq;
 
             if (lq) lowQualityButton  = createDownloadButton(tweetInformation, lq, tweetInformation.isGif ? "gif" : "lq");
-            if (hq) highQualityButton = createDownloadButton(tweetInformation, hq, tweetInformation.isGif ? "gif" : "hq");
+            if (hq && !tweetInformation.isGif) highQualityButton = createDownloadButton(tweetInformation, hq, "hq");
             
             const videoPlayer = isRetweet ? tweetElement.querySelector('[data-testid="videoPlayer"]') : null;
             const videoPlayerOnRetweet = isRetweet ? retweetFrame.querySelector('[data-testid="videoPlayer"]') : null;
@@ -325,6 +333,7 @@
         let username = null;
         let tweetUrl = null;
         let isGif = false;
+        let tabIndex = null;
 
         const retweetFrame = getRetweetFrame(tweetElement);
         const isRetweet = (retweetFrame != null);
@@ -332,6 +341,8 @@
         const videoPlayer = isRetweet ? retweetFrame.querySelector('[data-testid="videoPlayer"]') : null;
 
         const isPost = (isStatusUrl(window.location.href));
+
+        tabIndex = tweetElement.getAttribute('tabindex');
 
         const regex = /^https:\/\/twitter\.com\/([^\/]+)\/status\/(\d+)/;
         function setInfo(url) {
@@ -390,6 +401,7 @@
         information.url = tweetUrl;
         information.videoPlayer = videoPlayerElement;
         information.isGif = isGif;
+        information.tabIndex = tabIndex;
 
         // Play button
         return information;
