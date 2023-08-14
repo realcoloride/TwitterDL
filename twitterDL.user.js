@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter DL - Click "Always Allow"!
-// @version      1.0.7
+// @version      1.0.8
 // @description  Download twitter videos directly from your browser! (CLICK "ALWAYS ALLOW" IF PROMPTED!)
 // @author       realcoloride
 // @license      MIT
@@ -135,6 +135,8 @@
                 return width * height;
             }
             
+            if (!links) return null;
+
             // Map links to objects with resolution and size
             const linkObjects = links.map(link => {
                 const resolutionMatch = link.match(/\/(\d+x\d+)\//);
@@ -340,31 +342,38 @@
             tweetUrl = url;
         }
 
-        try {
-            if (isRetweet && isPost) {
-                const hasRetweetVideoPlayer = (videoPlayer != null);
-                if (hasRetweetVideoPlayer) {
-                    const url = window.location.href;
+        const url = window.location.href;
 
-                    setInfo(url);
-                }
+        try {
+            setInfo(url);
+        } catch {}
+        
+        function fallback() {
+            if (injectedFallbacks.includes(tweetElement)) return;
+
+            console.log("[TwitterDL] Twitter quote retweets from statuses are not supported yet, sorry! Throwing fallback...");
+
+            addSideTextToRetweet(tweetElement, " · Open to Download");
+        }
+
+        try {
+            if (isRetweet) {
+                if (isPost) {
+                    const hasRetweetVideoPlayer = (videoPlayer != null);
+                    if (hasRetweetVideoPlayer)
+                        fallback();
+                } else fallback();
             } else {
                 const timeElement = tweetElement.querySelector("time");
                 const timeHref = timeElement.parentNode;
                 const tweetUrl = timeHref.href;
-                setInfo(tweetUrl);
+
+                if (tweetUrl) setInfo(tweetUrl);
+                else fallback();
             }
         } catch (error) {
             try {
-                if (injectedFallbacks.includes(tweetElement)) return;
-
-                const retweetFrame = getRetweetFrame(tweetElement);
-                const videoPlayer = retweetFrame.querySelector('[data-testid="videoPlayer"]');
-                
-                if (!videoPlayer != null && retweetFrame != null && isStatusUrl(window.location.href)) return;
-                console.log("[TwitterDL] Twitter quote retweets from statuses are not supported yet. Throwing fallback");
-
-                addSideTextToRetweet(tweetElement, " · Open to Download");
+                fallback();
             } catch (error) {}
         }
 
