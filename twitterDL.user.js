@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter DL - Click "Always Allow"!
-// @version      1.1
+// @version      1.1.1
 // @description  Download twitter videos directly from your browser! (CLICK "ALWAYS ALLOW" IF PROMPTED!)
 // @author       realcoloride
 // @license      MIT
