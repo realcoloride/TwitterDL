@@ -6,6 +6,8 @@
 // @license      MIT
 // @namespace    https://twitter.com/*
 // @match        https://twitter.com/*
+// @match        https://x.com/*
+// @match        https://pro.twitter.com/*
 // @connect      twitter-video-download.com
 // @connect      twimg.com
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
@@ -433,11 +435,11 @@
     }
 
     function isStatusUrl(url) {
-        const statusUrlRegex = /^https?:\/\/twitter\.com\/\w+\/status\/\d+$/;
+        const statusUrlRegex = /^https?:\/\/(pro\.twitter|twitter)\.com\/\w+\/status\/\d+$/;
         return statusUrlRegex.test(url);
     }
     function isValidUrl(url) {
-        const tweetUrlRegex = /^https?:\/\/twitter\.com\/\w+(\/\w+)*$/;
+        const tweetUrlRegex = /^https?:\/\/(pro\.twitter|twitter)\.com\/\w+(\/\w+)*$/;
         return tweetUrlRegex.test(url) || isStatusUrl(window.location.href);
     }
     if (isValidUrl(window.location.href)) {
