@@ -19,7 +19,7 @@
 (function() {
     let injectedTweets = [];
     const checkFrequency = 150; // in milliseconds
-    const apiEndpoint = "https://twitter-video-download.com/fr/tweet/";
+    const apiEndpoint = "https://twitter-video-download.com/en/tweet/";
     const downloadText = "Download"
 
     const style = 
@@ -116,7 +116,7 @@
                 "sec-fetch-user": "?1",
                 "upgrade-insecure-requests": "1"
               },
-            "referrer": "https://twitter-video-download.com/fr",
+            "referrer": "https://twitter-video-download.com/en",
             "referrerPolicy": "strict-origin-when-cross-origin",
             "body": null,
             "method": "GET",
