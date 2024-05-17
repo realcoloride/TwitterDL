@@ -437,11 +437,11 @@
     }
 
     function isStatusUrl(url) {
-        const statusUrlRegex = /^https?:\/\/(pro\.twitter|twitter)\.com\/\w+\/status\/\d+$/;
+        const statusUrlRegex = /^https?:\/\/(pro\.x|x)\.com\/\w+\/status\/\d+$/;
         return statusUrlRegex.test(url);
     }
     function isValidUrl(url) {
-        const tweetUrlRegex = /^https?:\/\/(pro\.twitter|twitter)\.com\/\w+(\/\w+)*$/;
+        const tweetUrlRegex = /^https?:\/\/(pro\.x|x)\.com\/\w+(\/\w+)*$/;
         return tweetUrlRegex.test(url) || isStatusUrl(window.location.href);
     }
     if (isValidUrl(window.location.href)) {
